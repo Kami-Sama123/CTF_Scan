@@ -68,14 +68,12 @@ def extract_open_ports(file_path):
             content = file.read()
 
             # Use regex to extract open ports
-            open_ports_match = re.search(r'Ports: (.+?)\s+Ignored State', content, re.DOTALL)
+            open_ports_match = re.search(r'(\d+)/open/tcp//[^/]*/', content)
 
             if open_ports_match:
-                open_ports_str = open_ports_match.group(1)
-                open_ports = re.findall(r'\d+/open/tcp//[^/]*/', open_ports_str)
+                open_ports = re.findall(r'(\d+)/open/tcp//[^/]*/', content)
                 
                 if open_ports:
-                    open_ports = [re.search(r'(\d+)/open/tcp//[^/]*/', port).group(1) for port in open_ports]
                     return open_ports
                 else:
                     print("No open ports found.")
@@ -108,9 +106,9 @@ def run_second_scan(open_ports, target):
             # Extract and print service information from info.txt
             extract_service_info('info.txt')
         except subprocess.CalledProcessError as e:
-            print(f"Error during the second scan: {e}")
+            print(f"\nError during the second scan: {e}")
     else:
-        print("No open ports to perform the second scan.")
+        print("\nNo open ports to perform the second scan.")
 
 def extract_service_info(file_path):
     try:
@@ -133,11 +131,11 @@ def extract_service_info(file_path):
                     for details in service_details:
                         print(f"{details[0]}    {details[1]}  {details[2]}          {details[3]}")
                 else:
-                    print("No service information found.")
+                    print("\nNo service information found.")
             else:
-                print("No service information found.")
+                print("\nNo service information found.")
     except FileNotFoundError:
-        print(f"File '{file_path}' not found.")
+        print(f"\nFile '{file_path}' not found.")
 
 # Prompt user for target IP address
 target = input("\nProvide the target IP address: ")
@@ -161,6 +159,7 @@ if question.lower() == 'y':
             print("\nThe name you wrote is not valid for a directory. Please be careful!!")
     
 # Run nmap scan and save results to FullPorts.gnmap
+print("\nPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n")
 subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True)
 
 # Extract open ports from FullPorts.gnmap
