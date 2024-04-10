@@ -146,50 +146,84 @@ def copy_to_clipboard(data):
         print(f"Error copying to clipboard: {e}")
 
 
-def main():
-    # Prompt user for target IP address
-    target = input("\nProvide the target IP address: ")
+def ping_check(target):
+    try:
+        # Perform the ping check
+        response = subprocess.run(['ping', '-c', '1', target], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        if response.returncode == 0:
+            # Extract the TTL value from the ping response
+            ttl_line = [line for line in response.stdout.split('\n') if 'ttl=' in line][0]
+            ttl_value = int(re.search(r'ttl=(\d+)', ttl_line).group(1))
 
-    question = input(
-        "\nThis program creates files. If a file exists with the same name, it will overwrite it. "
-        "To avoid future problems, the program will move or create a new directory.\n\n"
-        "Do you want to proceed with the process of creating a directory? (y/n): ")
-
-    if question.lower() == 'y':
-        directory_creator = DirectoryCreator()
-        while True:
-            directory_name = input("\nWrite the name of the new directory: ")
-            if directory_creator.is_valid_directory_name(directory_name):
-                directory_location = input(
-                    "\nSpecify the location where you want to create the new directory. "
-                    "If you want to store the directory in your current directory, just type 'here'.\n"
-                    "Example: '/path/to/store/' or 'here': ")
-                directory_creator.create_directory(directory_location, directory_name)
-                break
+            # Determine the operating system based on the TTL value
+            if ttl_value in range(64, 129):
+                print(f"\nTarget IP ({target}) is up and responding to ping. The target machine is likely running a Linux-based operating system.")
+            elif ttl_value in range(128, 256):
+                print(f"\nTarget IP ({target}) is up and responding to ping. The target machine is likely running a Windows-based operating system.")
             else:
-                print("\nThe name you wrote is not valid for a directory. Please be careful!!")
+                print(f"\nTarget IP ({target}) is up and responding to ping, but the TTL value ({ttl_value}) does not match the expected range for Linux or Windows.")
+            return True
+        else:
+            print(f"\nTarget IP ({target}) is down and not responding to ping.")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking ping: {e}")
+        return False
 
-    # Run nmap scan and save results to FullPorts.gnmap
-    print("\nPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n")
-    
-    print("\n#### RUNNING FULLPORTS SCAN#####\n")
-    
-    with tqdm(total=100, desc="Scanning", unit="%", bar_format="{desc}: {percentage:.0f}%|{bar}|") as pbar:
-        try:
-            subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            print(f"Error during the scan: {e}")
-        pbar.update(100)
-    print("\n#### SCAN END #####\n")
-    open_ports = PortScanner.extract_open_ports('FullPorts.gnmap')
 
-    # Copy open ports to clipboard
-    if open_ports:
-        ports_str = ', '.join(open_ports)
-        copy_to_clipboard(ports_str)
+def main():
+    try:
+        # Prompt user for target IP address
+        target = input("\nProvide the target IP address: ")
 
-        # Run the second scan using the open ports
-        PortScanner.run_second_scan(open_ports, target)
+        if not ping_check(target):
+            return
+
+        question = input(
+            "\nThis program creates files. If a file exists with the same name, it will overwrite it. "
+            "To avoid future problems, the program will move or create a new directory.\n\n"
+            "Do you want to proceed with the process of creating a directory? (y/n): ")
+
+        if question.lower() == 'y':
+            directory_creator = DirectoryCreator()
+            while True:
+                directory_name = input("\nWrite the name of the new directory: ")
+                if directory_creator.is_valid_directory_name(directory_name):
+                    directory_location = input(
+                        "\nSpecify the location where you want to create the new directory. "
+                        "If you want to store the directory in your current directory, just type 'here'.\n"
+                        "Example: '/path/to/store/' or 'here': ")
+                    directory_creator.create_directory(directory_location, directory_name)
+                    break
+                else:
+                    print("\nThe name you wrote is not valid for a directory. Please be careful!!")
+
+        # Run nmap scan and save results to FullPorts.gnmap
+        print("\nPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n")
+        
+        print("\n#### RUNNING FULLPORTS SCAN#####\n")
+        
+        with tqdm(total=100, desc="Scanning", unit="%", bar_format="{desc}: {percentage:.0f}%|{bar}|") as pbar:
+            try:
+                subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                print(f"Error during the scan: {e}")
+            pbar.update(100)
+        print("\n#### SCAN END #####\n")
+        open_ports = PortScanner.extract_open_ports('FullPorts.gnmap')
+
+        # Copy open ports to clipboard
+        if open_ports:
+            ports_str = ', '.join(open_ports)
+            copy_to_clipboard(ports_str)
+
+            # Run the second scan using the open ports
+            PortScanner.run_second_scan(open_ports, target)
+    except KeyboardInterrupt:
+        print("\ABORTING...")
+    except Exception as e:
+            print(f"Unexpected error: {e}")
+            return
 
 if __name__ == "__main__":
     main()
