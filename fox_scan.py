@@ -1,3 +1,4 @@
+
 import subprocess
 import re
 import pyperclip
@@ -39,9 +40,9 @@ class DirectoryCreator:
         except PermissionError as pe:
             print(f"Error: {pe}")
             question = input(
-                "\nInsufficient privileges to change directory. Do you want to proceed with elevated privileges (sudo)? (y/n): ")
+                "\n\033[91mInsufficient privileges to change directory. Do you want to proceed with elevated privileges (sudo)? (y/n): \033[0m")
             if question.lower() == 'y':
-                sudo_password = input("Enter your sudo password: ")
+                sudo_password = input("\033[93mEnter your sudo password: \033[0m")
                 sudo_command = f"echo {sudo_password} | sudo -S chown $USER:$USER {self.new_directory_path}"
                 subprocess.run(sudo_command, shell=True)
                 os.chdir(self.new_directory_path)
@@ -93,21 +94,20 @@ class PortScanner:
             print(f"File '{file_path}' not found.")
             return []
 
-    @staticmethod
-    def run_second_scan(open_ports, target):
+    def run_second_scan(self, open_ports, target):
         if open_ports:
             try:
                 ports_str = ','.join(open_ports)
                 # Specify a user-writable file path for the output
-                output_file = os.path.join(os.getcwd(), 'full.txt')
+                output_file = "full.txt"
                 print("\n##### RUNNING SERVICES SCAN #####\n")
-                with open(os.devnull, 'w') as devnull:
-                    subprocess.run(['sudo', 'nmap', '-p', ports_str, '-sCV', '-n', '-Pn', '-oN', 'full.txt', target], check=True,encoding='utf-8', stdout=devnull, stderr=subprocess.STDOUT)
+                with open(output_file, 'w') as output_file_obj:
+                    subprocess.run(['sudo', 'nmap', '-p', ports_str, '-sCV', '-n', '-Pn', '-oN', output_file, target], check=True, encoding='utf-8', stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
                 print("\n##### SCAN ENDED #####)\n")
                 print("\nSecond scan completed. Results saved in info.txt\n")
-                relevant_info = PortScanner.extract_service_info(output_file)
-                PortScanner.save_to_file(relevant_info, "info.txt")
-                choice = input("Do you want to see a preview of the extracted information? (yes/no): ").lower()
+                relevant_info = self.extract_service_info(output_file)
+                self.save_to_file(relevant_info, "info.txt", target)
+                choice = input("\033[92mDo you want to see a preview of the extracted information? (yes/no): \033[0m").lower()
                 if choice == "yes":
                     print("\n".join(relevant_info))
                 print("Information saved to info.txt")
@@ -132,8 +132,9 @@ class PortScanner:
             print(f"\nFile '{file_path}' not found.")
 
     @staticmethod
-    def save_to_file(info, filename):
+    def save_to_file(info, filename, target):
         with open(filename, "w") as file:
+            file.write(f"This is the target machine IP: {target}\n")
             for line in info:
                 file.write(line + "\n")
 
@@ -141,7 +142,7 @@ class PortScanner:
 def copy_to_clipboard(data):
     try:
         pyperclip.copy(data)
-        print("Open ports copied to clipboard.")
+        print("\033[92mOpen ports copied to clipboard.\033[0m")
     except pyperclip.PyperclipException as e:
         print(f"Error copying to clipboard: {e}")
 
@@ -157,14 +158,14 @@ def ping_check(target):
 
             # Determine the operating system based on the TTL value
             if ttl_value in range(64, 129):
-                print(f"\nTarget IP ({target}) is up and responding to ping. The target machine is likely running a Linux-based operating system.")
+                print(f"\n\033[92mTarget IP ({target}) is up and responding to ping. The target machine is likely running a Linux-based operating system.\033[0m")
             elif ttl_value in range(128, 256):
-                print(f"\nTarget IP ({target}) is up and responding to ping. The target machine is likely running a Windows-based operating system.")
+                print(f"\n\033[92mTarget IP ({target}) is up and responding to ping. The target machine is likely running a Windows-based operating system.\033[0m")
             else:
-                print(f"\nTarget IP ({target}) is up and responding to ping, but the TTL value ({ttl_value}) does not match the expected range for Linux or Windows.")
+                print(f"\n\033[92mTarget IP ({target}) is up and responding to ping, but the TTL value ({ttl_value}) does not match the expected range for Linux or Windows.\033[0m")
             return True
         else:
-            print(f"\nTarget IP ({target}) is down and not responding to ping.")
+            print(f"\n\033[92mTarget IP ({target}) is down and not responding to ping.")
             return False
     except subprocess.CalledProcessError as e:
         print(f"Error checking ping: {e}")
@@ -174,32 +175,32 @@ def ping_check(target):
 def main():
     try:
         # Prompt user for target IP address
-        target = input("\nProvide the target IP address: ")
+        target = input("\n\033[93mProvide the target IP address: \033[0m")
 
         if not ping_check(target):
             return
 
         question = input(
-            "\nThis program creates files. If a file exists with the same name, it will overwrite it. "
+            "\n\033[91mThis program creates files. If a file exists with the same name, it will overwrite it. "
             "To avoid future problems, the program will move or create a new directory.\n\n"
-            "Do you want to proceed with the process of creating a directory? (y/n): ")
+            "Do you want to proceed with the process of creating a directory? (y/n): \033[0m")
 
         if question.lower() == 'y':
             directory_creator = DirectoryCreator()
             while True:
-                directory_name = input("\nWrite the name of the new directory: ")
+                directory_name = input("\n\033[91mTWrite the name of the new directory: \033[0m")
                 if directory_creator.is_valid_directory_name(directory_name):
                     directory_location = input(
-                        "\nSpecify the location where you want to create the new directory. "
+                        "\n\033[91mSpecify the location where you want to create the new directory. "
                         "If you want to store the directory in your current directory, just type 'here'.\n"
-                        "Example: '/path/to/store/' or 'here': ")
+                        "Example: '/path/to/store/' or 'here': \033[0m")
                     directory_creator.create_directory(directory_location, directory_name)
                     break
                 else:
                     print("\nThe name you wrote is not valid for a directory. Please be careful!!")
 
         # Run nmap scan and save results to FullPorts.gnmap
-        print("\nPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n")
+        print("\n\033[91mPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n\033[0m")
         
         print("\n#### RUNNING FULLPORTS SCAN#####\n")
         
@@ -212,13 +213,15 @@ def main():
         print("\n#### SCAN END #####\n")
         open_ports = PortScanner.extract_open_ports('FullPorts.gnmap')
 
-        # Copy open ports to clipboard
         if open_ports:
             ports_str = ', '.join(open_ports)
             copy_to_clipboard(ports_str)
 
-            # Run the second scan using the open ports
-            PortScanner.run_second_scan(open_ports, target)
+            # Create an instance of the PortScanner class
+            port_scanner = PortScanner()
+
+            # Call the run_second_scan() method on the PortScanner instance
+            port_scanner.run_second_scan(open_ports, target)
     except KeyboardInterrupt:
         print("\ABORTING...")
     except Exception as e:
