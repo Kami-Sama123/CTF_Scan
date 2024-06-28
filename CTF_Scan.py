@@ -1,4 +1,3 @@
-
 import subprocess
 import re
 import pyperclip
@@ -6,6 +5,37 @@ import os
 import pwd
 from tqdm import tqdm
 
+def intro():
+    ascii_art = """
+                                                                   ,-,
+                                                             _.-=;~ /_
+                                                          _-~   '     ;.
+                                                      _.-~     '   .-~-~`-._
+                                                _.--~~:.             --.____88
+                              ____.........--~~~. .' .  .        _..-------~~
+                     _..--~~~~               .' .'             ,'
+                 _.-~                        .       .     ` ,'
+               .'                                    :.    ./
+             .:     ,/          `                   ::.   ,'
+           .:'     ,(            ;.                ::. ,-'
+          .'     ./'.`.     . . /:::._______.... _/:.o/
+         /     ./'. . .)  . _.,'               `88;?88|
+       ,'  . .,/'._,-~ /_.o8P'                  88P ?8b
+    _,'' . .,/',-~    d888P'                    88'  88|
+ _.'~  . .,:oP'        ?88b              _..--- 88.--'8b.--..__
+:     ...' 88o __,------.88o ...__..._.=~- .    `~~   `~~      ~-._ Seal _.
+`.;;;:='    ~~            ~~~                ~-    -       -   -
+"""
+
+    text = "CTF SCAN made by Kami"
+
+    art_length = len(max(ascii_art.splitlines(), key=len))
+
+    separator = "_" * art_length
+
+    combined_output = f"{separator}\n{ascii_art}\n{separator}\n{text}"
+
+    print(combined_output)
 
 class DirectoryCreator:
     def __init__(self):
@@ -14,26 +44,23 @@ class DirectoryCreator:
     def create_directory(self, location, directory_name):
         try:
             if location.lower() == 'here':
-                location = os.getcwd()  # Use the current working directory
+                location = os.getcwd() 
             elif not os.path.isabs(location):
-                location = os.path.join(os.getcwd(), location)  # Make it an absolute path
-
-            # Check if the directory name is valid
+                location = os.path.join(os.getcwd(), location)
+                
             if not self.is_valid_directory_name(directory_name):
                 raise ValueError("Invalid directory name. Please follow the naming conventions.")
 
-            # Create the new directory
             self.new_directory_path = os.path.join(location, directory_name)
             os.makedirs(self.new_directory_path, exist_ok=True)
 
-            # Change the ownership of the directory to the current user
+
             uid = pwd.getpwnam(os.getlogin()).pw_uid
             gid = pwd.getpwnam(os.getlogin()).pw_gid
             os.chown(self.new_directory_path, uid, gid)
 
             print(f"Directory '{directory_name}' created successfully at '{self.new_directory_path}'")
 
-            # Change the current working directory to the newly created directory
             os.chdir(self.new_directory_path)
 
             return True
@@ -57,7 +84,6 @@ class DirectoryCreator:
 
     @staticmethod
     def is_valid_directory_name(directory_name):
-        # Avoid spaces and special characters
         if not re.match("^[a-zA-Z0-9_-]*$", directory_name):
             return False
 
@@ -98,7 +124,6 @@ class PortScanner:
         if open_ports:
             try:
                 ports_str = ','.join(open_ports)
-                # Specify a user-writable file path for the output
                 output_file = "full.txt"
                 print("\n##### RUNNING SERVICES SCAN #####\n")
                 with open(output_file, 'w') as output_file_obj:
@@ -149,14 +174,11 @@ def copy_to_clipboard(data):
 
 def ping_check(target):
     try:
-        # Perform the ping check
         response = subprocess.run(['ping', '-c', '1', target], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         if response.returncode == 0:
-            # Extract the TTL value from the ping response
             ttl_line = [line for line in response.stdout.split('\n') if 'ttl=' in line][0]
             ttl_value = int(re.search(r'ttl=(\d+)', ttl_line).group(1))
 
-            # Determine the operating system based on the TTL value
             if ttl_value in range(64, 129):
                 print(f"\n\033[92mTarget IP ({target}) is up and responding to ping. The target machine is likely running a Linux-based operating system.\033[0m")
             elif ttl_value in range(128, 256):
@@ -174,7 +196,9 @@ def ping_check(target):
 
 def main():
     try:
-        # Prompt user for target IP address
+        
+        intro()
+
         target = input("\n\033[93mProvide the target IP address: \033[0m")
 
         if not ping_check(target):
@@ -199,7 +223,6 @@ def main():
                 else:
                     print("\nThe name you wrote is not valid for a directory. Please be careful!!")
 
-        # Run nmap scan and save results to FullPorts.gnmap
         print("\n\033[91mPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n\033[0m")
         
         print("\n#### RUNNING FULLPORTS SCAN#####\n")
@@ -217,10 +240,8 @@ def main():
             ports_str = ', '.join(open_ports)
             copy_to_clipboard(ports_str)
 
-            # Create an instance of the PortScanner class
             port_scanner = PortScanner()
 
-            # Call the run_second_scan() method on the PortScanner instance
             port_scanner.run_second_scan(open_ports, target)
     except KeyboardInterrupt:
         print("\ABORTING...")
@@ -230,3 +251,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
