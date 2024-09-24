@@ -5,6 +5,7 @@ import os
 import pwd
 from tqdm import tqdm
 
+# ASCII Art and Introo
 def intro():
     ascii_art = """
                                                                    ,-,
@@ -37,6 +38,7 @@ def intro():
 
     print(combined_output)
 
+# Directory Creator
 class DirectoryCreator:
     def __init__(self):
         self.new_directory_path = None
@@ -96,16 +98,13 @@ class DirectoryCreator:
 
         if directory_name in {'..', '.'}:
             return False
-
-        if directory_name.lower().startswith('/dev/'):
-            return False
-
+            
         return True
 
 
-class PortScanner:
-    @staticmethod
-    def extract_open_ports(file_path):
+# Scanner
+class Scanner:
+    def extract_open_ports(self, file_path):
         try:
             with open(file_path, 'r') as file:
                 content = file.read()
@@ -163,6 +162,26 @@ class PortScanner:
             for line in info:
                 file.write(line + "\n")
 
+    def first_scan(self, target):
+        print("\n#### RUNNING FULLPORTS SCAN#####\n")
+        with tqdm(total=100, desc="Scanning", unit="%", bar_format="{desc}: {percentage:.0f}%|{bar}|") as pbar:
+            try:
+                subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                print(f"Error during the scan: {e}")
+            pbar.update(100)
+        print("\n#### SCAN END #####\n")
+        open_ports = self.extract_open_ports('FullPorts.gnmap')
+        if open_ports:
+            ports_str = ', '.join(open_ports)
+            copy_to_clipboard(ports_str)
+        return open_ports
+
+    def second_scan(self, target):
+        open_ports = self.first_scan(target)
+        if open_ports:
+            self.run_second_scan(open_ports, target)
+
 
 def copy_to_clipboard(data):
     try:
@@ -196,10 +215,12 @@ def ping_check(target):
 
 def main():
     try:
-        
         intro()
 
-        target = input("\n\033[93mProvide the target IP address: \033[0m")
+        target = input("\n\033[93mProvide the target IP address or hostname: \033[0m")
+        if not re.match(r"^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})|([a-zA-Z0-9.-]+)$", target):
+            print("Invalid target. Please enter a valid IP address")
+            return
 
         if not ping_check(target):
             return
@@ -212,7 +233,7 @@ def main():
         if question.lower() == 'y':
             directory_creator = DirectoryCreator()
             while True:
-                directory_name = input("\n\033[91mTWrite the name of the new directory: \033[0m")
+                directory_name = input("\n\033[91mWrite the name of the new directory: \033[0m")
                 if directory_creator.is_valid_directory_name(directory_name):
                     directory_location = input(
                         "\n\033[91mSpecify the location where you want to create the new directory. "
@@ -224,31 +245,15 @@ def main():
                     print("\nThe name you wrote is not valid for a directory. Please be careful!!")
 
         print("\n\033[91mPerfect, Now for the next scan we will perform a Stealth Scan so we are going to need sudo privileges\n\033[0m")
-        
-        print("\n#### RUNNING FULLPORTS SCAN#####\n")
-        
-        with tqdm(total=100, desc="Scanning", unit="%", bar_format="{desc}: {percentage:.0f}%|{bar}|") as pbar:
-            try:
-                subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            except subprocess.CalledProcessError as e:
-                print(f"Error during the scan: {e}")
-            pbar.update(100)
-        print("\n#### SCAN END #####\n")
-        open_ports = PortScanner.extract_open_ports('FullPorts.gnmap')
 
-        if open_ports:
-            ports_str = ', '.join(open_ports)
-            copy_to_clipboard(ports_str)
-
-            port_scanner = PortScanner()
-
-            port_scanner.run_second_scan(open_ports, target)
+        scanner = Scanner()
+        scanner.second_scan(target)
     except KeyboardInterrupt:
         print("\ABORTING...")
     except Exception as e:
-            print(f"Unexpected error: {e}")
-            return
+        print(f"Unexpected error: {e}")
+        return
+
 
 if __name__ == "__main__":
     main()
-
