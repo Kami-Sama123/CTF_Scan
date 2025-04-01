@@ -166,7 +166,7 @@ class Scanner:
         print("\n#### RUNNING FULLPORTS SCAN#####\n")
         with tqdm(total=100, desc="Scanning", unit="%", bar_format="{desc}: {percentage:.0f}%|{bar}|") as pbar:
             try:
-                subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                subprocess.run(['sudo', 'nmap', '-sS', '-p-', '--open', '--min-rate', '2000', '-n', '-Pn', '--max-retries', '3', '-oG', 'FullPorts.gnmap', target], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as e:
                 print(f"Error during the scan: {e}")
             pbar.update(100)
